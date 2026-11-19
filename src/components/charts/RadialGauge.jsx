@@ -20,6 +20,7 @@ export default function RadialGauge({
   title,
   subtitle,
   value,
+  displayText,
   unit,
   min,
   max,
@@ -32,8 +33,8 @@ export default function RadialGauge({
   extraBadge,
   onClick,
 }) {
-  const isNull = value === null || value === undefined || value === 'null';
-  const numericValue = isNull ? min : Number(value);
+  const isEmpty = value === null || value === undefined || value === 'null';
+  const numericValue = isEmpty ? min : Number(value);
   const clamped = Math.min(max, Math.max(min, numericValue));
   const startAngle = -125;
   const endAngle = 125;
@@ -53,7 +54,9 @@ export default function RadialGauge({
   const needleTip = polarToCartesian(cx, cy, radius - 10, needleAngle);
 
   const statusColors =
-    severity === 'critical'
+    status === 'SIN DATOS'
+      ? 'bg-slate-100 text-slate-600 border-slate-200'
+      : severity === 'critical'
       ? 'bg-red-100 text-red-700 border-red-200'
       : severity === 'warning'
       ? 'bg-amber-100 text-amber-800 border-amber-200'
@@ -128,8 +131,8 @@ export default function RadialGauge({
             strokeLinecap="butt"
           />
 
-          {/* Needle */}
-          {!isNull && (
+          {/* Needle only rendered when there is an actual numeric value */}
+          {!isEmpty && (
             <line
               x1={cx}
               y1={cy}
@@ -157,12 +160,16 @@ export default function RadialGauge({
           <div className="flex items-baseline justify-center gap-1">
             <span
               className={`text-2xl font-extrabold font-mono tracking-tight ${
-                isViolation ? 'text-red-600' : 'text-slate-800'
+                isViolation
+                  ? 'text-red-600'
+                  : isEmpty
+                  ? 'text-slate-400'
+                  : 'text-slate-800'
               }`}
             >
-              {isNull ? 'null' : value}
+              {displayText !== undefined ? displayText : isEmpty ? '--' : value}
             </span>
-            {!isNull && <span className="text-xs font-semibold text-slate-500">{unit}</span>}
+            {!isEmpty && <span className="text-xs font-semibold text-slate-500">{unit}</span>}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             Nominal: {nominalMin} – {nominalMax} {unit}

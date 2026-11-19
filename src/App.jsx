@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GATEWAY_CONFIG } from './data/nodesCatalog';
 import {
-  createInitialGatewayHistory,
-  generateNodeMessagesForScenario,
-} from './data/simulator';
-import {
   formatUltimosToSnapshot,
   mergeMessagesIntoSnapshots,
   evaluateGatewayState,
@@ -25,120 +21,83 @@ import GatewayGuideView from './components/gateway/GatewayGuideView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [connectionMode, setConnectionMode] = useState('simulator'); // 'simulator' | 'hardware' | 'python'
   const [gatewayBaseUrl, setGatewayBaseUrl] = useState(GATEWAY_CONFIG.defaultGatewayUrl);
-  const [gatewayOnline, setGatewayOnline] = useState(true);
+  const [gatewayOnline, setGatewayOnline] = useState(false);
   const [gatewayError, setGatewayError] = useState(null);
-  const [clockSyncStatus, setClockSyncStatus] = useState(() => `Hora OK (${Date.now()})`);
+  const [clockSyncStatus, setClockSyncStatus] = useState(null);
 
-  const [scenarioId, setScenarioId] = useState('nominal');
   const [isPlaying, setIsPlaying] = useState(true);
   const [selectedViolationId, setSelectedViolationId] = useState(null);
 
-  const initialData = useMemo(() => createInitialGatewayHistory('nominal', 16), []);
-  const [history, setHistory] = useState(initialData.snapshots);
-  const [ultimos, setUltimos] = useState(initialData.ultimos);
-  const [rawMessages, setRawMessages] = useState(initialData.rawMessages);
-  const [lastId, setLastId] = useState(initialData.lastId);
-  const lastIdRef = useRef(initialData.lastId);
+  // Estado alimentado exclusivamente por los datos reales del Gateway (/api/ultimos y /api/datos)
+  const [history, setHistory] = useState([]);
+  const [ultimos, setUltimos] = useState([]);
+  const [rawMessages, setRawMessages] = useState([]);
+  const [lastId, setLastId] = useState(0);
+  const lastIdRef = useRef(0);
 
   useEffect(() => {
     lastIdRef.current = lastId;
   }, [lastId]);
 
-  // Sincronizar /api/hora?epoch_ms=Date.now() según punto 6 de la guía
+  // Paso 4 / Punto 6: GET /api/hora?epoch_ms=Date.now()
   const handleSyncClock = useCallback(
-    async (targetUrl = gatewayBaseUrl, mode = connectionMode) => {
-      const epochMs = Date.now();
-      if (mode === 'simulator') {
-        setClockSyncStatus(`Hora OK (${epochMs})`);
-        return;
-      }
+    async (targetUrl = gatewayBaseUrl) => {
       setClockSyncStatus('Sincronizando...');
       const res = await syncGatewayClock(targetUrl);
       if (res.ok) {
-        setClockSyncStatus(`Hora sincronizada (${res.epoch_ms})`);
+        setClockSyncStatus(`Hora OK (${res.epoch_ms})`);
         setGatewayOnline(true);
         setGatewayError(null);
       } else {
-        setClockSyncStatus('Sin conexión a /api/hora');
+        setClockSyncStatus('Sin respuesta /api/hora');
       }
     },
-    [gatewayBaseUrl, connectionMode]
+    [gatewayBaseUrl]
   );
 
-  // Cambio de modo de conexión (Gateway Real 192.168.4.1 / Python localhost:8000 / Simulador JS)
-  const handleChangeConnectionMode = (newMode) => {
-    setConnectionMode(newMode);
-    setGatewayError(null);
-    if (newMode === 'hardware') {
-      const url = GATEWAY_CONFIG.defaultGatewayUrl;
-      setGatewayBaseUrl(url);
-      lastIdRef.current = 0;
-      setLastId(0);
-      handleSyncClock(url, 'hardware');
-    } else if (newMode === 'python') {
-      const url = GATEWAY_CONFIG.localSimulatorUrl;
-      setGatewayBaseUrl(url);
-      lastIdRef.current = 0;
-      setLastId(0);
-      handleSyncClock(url, 'python');
-    } else {
-      setGatewayOnline(true);
-      setClockSyncStatus(`Hora local (${Date.now()})`);
-    }
+  // Al cambiar la URL del Gateway, reiniciar puntero `desde=0` y sincronizar hora
+  const handleChangeGatewayBaseUrl = (newUrl) => {
+    setGatewayBaseUrl(newUrl);
+    lastIdRef.current = 0;
+    setLastId(0);
+    setHistory([]);
+    setUltimos([]);
+    setRawMessages([]);
   };
 
-  // Cambio de escenario en el simulador integrado
-  const handleScenarioChange = (newScenarioId) => {
-    setScenarioId(newScenarioId);
-    const seeded = createInitialGatewayHistory(newScenarioId, 16);
-    setHistory(seeded.snapshots);
-    setUltimos(seeded.ultimos);
-    setRawMessages(seeded.rawMessages);
-    setLastId(seeded.lastId);
-    lastIdRef.current = seeded.lastId;
-  };
-
-  // Al abrir la interfaz: enviar /api/hora?epoch_ms=Date.now() al gateway
+  // Al abrir la interfaz: enviar hora actual en milisegundos al Gateway una vez
   useEffect(() => {
-    syncGatewayClock(GATEWAY_CONFIG.defaultGatewayUrl);
-  }, []);
+    syncGatewayClock(gatewayBaseUrl).then((res) => {
+      if (res.ok) {
+        setClockSyncStatus(`Hora OK (${res.epoch_ms})`);
+        setGatewayOnline(true);
+      }
+    });
+  }, [gatewayBaseUrl]);
 
-  // Ciclo de lectura cada 2 segundos (/api/ultimos y /api/datos?desde=ID)
+  // Ciclo de lectura cada 2 segundos: GET /api/ultimos y GET /api/datos?desde=ID
   useEffect(() => {
     if (!isPlaying) return;
 
-    const pollGateway = async () => {
-      if (connectionMode === 'simulator') {
-        const { ultimos: nextUltimos, nuevosDatos } =
-          generateNodeMessagesForScenario(scenarioId, Date.now());
-        const snap = formatUltimosToSnapshot(nextUltimos);
-        setUltimos(nextUltimos);
-        setHistory((prev) => [...prev.slice(-15), snap]);
-        setRawMessages((prev) => [...prev, ...nuevosDatos].slice(-70));
-        if (snap.maxMsgId > lastIdRef.current) {
-          lastIdRef.current = snap.maxMsgId;
-          setLastId(snap.maxMsgId);
-        }
-        setGatewayOnline(true);
-        return;
-      }
+    let isMounted = true;
 
+    const pollRealGateway = async () => {
       try {
-        const fetchedUltimos = await fetchGatewayUltimos(gatewayBaseUrl);
-        const fetchedDatos = await fetchGatewayDatosDesde(
-          gatewayBaseUrl,
-          lastIdRef.current
-        );
+        const [fetchedUltimos, fetchedDatos] = await Promise.all([
+          fetchGatewayUltimos(gatewayBaseUrl),
+          fetchGatewayDatosDesde(gatewayBaseUrl, lastIdRef.current).catch(() => []),
+        ]);
 
-        if (Array.isArray(fetchedUltimos) && fetchedUltimos.length > 0) {
+        if (!isMounted) return;
+
+        if (Array.isArray(fetchedUltimos)) {
           const snap = formatUltimosToSnapshot(fetchedUltimos);
           setUltimos(fetchedUltimos);
 
           if (Array.isArray(fetchedDatos) && fetchedDatos.length > 0) {
-            setRawMessages((prev) => [...prev, ...fetchedDatos].slice(-70));
-            setHistory((prev) => mergeMessagesIntoSnapshots(prev, fetchedDatos, 16));
+            setRawMessages((prev) => [...prev, ...fetchedDatos].slice(-100));
+            setHistory((prev) => mergeMessagesIntoSnapshots(prev, fetchedDatos, 20));
             const maxFromDatos = fetchedDatos.reduce(
               (acc, item) => Math.max(acc, item?.id || 0),
               lastIdRef.current
@@ -146,8 +105,8 @@ export default function App() {
             const nextId = Math.max(maxFromDatos, snap.maxMsgId);
             lastIdRef.current = nextId;
             setLastId(nextId);
-          } else {
-            setHistory((prev) => [...prev.slice(-15), snap]);
+          } else if (fetchedUltimos.length > 0) {
+            setHistory((prev) => [...prev.slice(-19), snap]);
             if (snap.maxMsgId > lastIdRef.current) {
               lastIdRef.current = snap.maxMsgId;
               setLastId(snap.maxMsgId);
@@ -158,16 +117,23 @@ export default function App() {
           setGatewayError(null);
         }
       } catch (err) {
+        if (!isMounted) return;
         setGatewayOnline(false);
         setGatewayError(
-          `No se pudo leer ${gatewayBaseUrl}/api/ultimos (${err.message || 'timeout'})`
+          `Sin respuesta de ${gatewayBaseUrl}/api/ultimos (${err.message || 'timeout'})`
         );
       }
     };
 
-    const timer = setInterval(pollGateway, GATEWAY_CONFIG.pollIntervalMs);
-    return () => clearInterval(timer);
-  }, [isPlaying, connectionMode, gatewayBaseUrl, scenarioId]);
+    // Llamada inmediata al montar / activar y luego cada 2 segundos
+    pollRealGateway();
+    const timer = setInterval(pollRealGateway, GATEWAY_CONFIG.pollIntervalMs);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [isPlaying, gatewayBaseUrl]);
 
   const { evaluations, violations, nodeStatuses } = useMemo(
     () => evaluateGatewayState(history, ultimos),
@@ -175,7 +141,9 @@ export default function App() {
   );
 
   const latest = history[history.length - 1] || {};
-  const onlineNodesCount = nodeStatuses.filter((n) => !n.isOffline).length;
+  const onlineNodesCount = nodeStatuses.filter(
+    (n) => n.hasReceivedPacket && !n.isOffline
+  ).length;
 
   const openDiagnosticForViolation = (idOrNodeId) => {
     setSelectedViolationId(idOrNodeId);
@@ -191,7 +159,7 @@ export default function App() {
         violationsCount={violations.length}
         onlineNodesCount={onlineNodesCount}
         totalNodesCount={nodeStatuses.length}
-        connectionMode={connectionMode}
+        gatewayBaseUrl={gatewayBaseUrl}
         gatewayOnline={gatewayOnline}
       />
 
@@ -199,21 +167,19 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <Header
-          timestamp={latest.timestamp || '--:--:--'}
+          timestamp={latest.timestamp || 'Esperando datos...'}
           lastId={lastId}
-          connectionMode={connectionMode}
-          onChangeConnectionMode={handleChangeConnectionMode}
-          scenarioId={scenarioId}
-          onScenarioChange={handleScenarioChange}
+          gatewayBaseUrl={gatewayBaseUrl}
+          gatewayOnline={gatewayOnline}
           isPlaying={isPlaying}
           onTogglePlay={() => setIsPlaying(!isPlaying)}
-          onSyncClock={() => handleSyncClock(gatewayBaseUrl, connectionMode)}
+          onSyncClock={() => handleSyncClock(gatewayBaseUrl)}
           clockSyncStatus={clockSyncStatus}
           violations={violations}
           onOpenDiagnostic={openDiagnosticForViolation}
         />
 
-        {/* Alert Banner when any anomaly or violation is active */}
+        {/* Alert Banner when any real anomaly or violation is active */}
         <AlertBanner
           violations={violations}
           onOpenDiagnostic={openDiagnosticForViolation}
@@ -230,7 +196,11 @@ export default function App() {
               evaluations={evaluations}
               violations={violations}
               nodeStatuses={nodeStatuses}
+              gatewayOnline={gatewayOnline}
+              gatewayBaseUrl={gatewayBaseUrl}
+              gatewayError={gatewayError}
               onOpenDiagnostic={openDiagnosticForViolation}
+              onOpenGatewaySettings={() => setActiveTab('gateway')}
             />
           )}
 
@@ -249,16 +219,12 @@ export default function App() {
 
           {activeTab === 'gateway' && (
             <GatewayGuideView
-              connectionMode={connectionMode}
-              onChangeConnectionMode={handleChangeConnectionMode}
               gatewayBaseUrl={gatewayBaseUrl}
-              onChangeGatewayBaseUrl={setGatewayBaseUrl}
+              onChangeGatewayBaseUrl={handleChangeGatewayBaseUrl}
               gatewayOnline={gatewayOnline}
               gatewayError={gatewayError}
-              onSyncClock={() => handleSyncClock(gatewayBaseUrl, connectionMode)}
+              onSyncClock={() => handleSyncClock(gatewayBaseUrl)}
               clockSyncStatus={clockSyncStatus}
-              scenarioId={scenarioId}
-              onScenarioChange={handleScenarioChange}
               lastId={lastId}
             />
           )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { WifiOff, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { WifiOff, Clock, AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 import SensorIcon from '../common/SensorIcon';
 
 export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
@@ -8,12 +8,12 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold text-slate-800">
-            Estado en Tiempo Real de los 7 Nodos ESP32 (/api/ultimos)
+            Lecturas en Tiempo Real de los 7 Nodos ESP32 (/api/ultimos)
           </h3>
           <p className="text-xs text-slate-500">
-            Datos extraídos de <code className="font-mono text-indigo-600">s.msg</code> · Si{' '}
-            <code className="font-mono text-indigo-600">hace_s &gt; 60</code>, el nodo se marca
-            como apagado o desconectado.
+            Datos extraídos directamente de <code className="font-mono text-indigo-600">s.msg</code> · Si{' '}
+            <code className="font-mono text-indigo-600">hace_s &gt; 60</code>, el sensor está
+            apagado o desconectado.
           </p>
         </div>
       </div>
@@ -21,7 +21,8 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         {nodeStatuses.map((node) => {
           const msg = node.msg || {};
-          const primaryVal = msg[node.primaryField];
+          const hasPacket = node.hasReceivedPacket;
+          const primaryVal = hasPacket ? msg[node.primaryField] : undefined;
           const isNull = primaryVal === null || primaryVal === undefined;
           const isBad = node.severity !== 'nominal';
           const primaryVar = node.variables[0];
@@ -31,7 +32,9 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
               key={node.id}
               onClick={() => onSelectNode(node.id)}
               className={`bg-white rounded-xl border p-3.5 shadow-sm cursor-pointer transition-all hover:shadow-md flex flex-col justify-between ${
-                node.isOffline
+                !hasPacket
+                  ? 'border-slate-200 opacity-85'
+                  : node.isOffline
                   ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100'
                   : isBad
                   ? 'border-red-300 ring-2 ring-red-100'
@@ -46,18 +49,20 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
                   </span>
                   <span
                     className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      node.isOffline
+                      !hasPacket
+                        ? 'bg-slate-100 text-slate-400'
+                        : node.isOffline
                         ? 'bg-red-600 text-white'
                         : 'bg-slate-100 text-slate-600'
                     }`}
-                    title="Segundos desde el último paquete recibido en el gateway"
+                    title="Segundos desde el último dato recibido en el gateway"
                   >
                     {node.isOffline ? (
                       <WifiOff className="w-3 h-3" />
                     ) : (
                       <Clock className="w-2.5 h-2.5" />
                     )}
-                    {node.hace_s}s
+                    {hasPacket && node.hace_s !== null ? `${node.hace_s}s` : '--'}
                   </span>
                 </div>
 
@@ -87,10 +92,16 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
                   <div className="flex items-baseline gap-1 mt-0.5">
                     <span
                       className={`text-xl font-extrabold font-mono ${
-                        isBad ? 'text-red-600' : 'text-slate-900'
+                        !hasPacket
+                          ? 'text-slate-400'
+                          : isBad
+                          ? 'text-red-600'
+                          : 'text-slate-900'
                       }`}
                     >
-                      {isNull
+                      {!hasPacket
+                        ? '--'
+                        : isNull
                         ? 'null'
                         : node.primaryField === 'puerta_abierta'
                         ? primaryVal === 1
@@ -98,7 +109,7 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
                           : 'CERRADA (0)'
                         : primaryVal}
                     </span>
-                    {!isNull && node.primaryField !== 'puerta_abierta' && (
+                    {hasPacket && !isNull && node.primaryField !== 'puerta_abierta' && (
                       <span className="text-xs font-semibold text-slate-400">
                         {primaryVar?.unit}
                       </span>
@@ -109,15 +120,16 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
                 {/* Secondary fields from msg */}
                 <div className="space-y-1 text-[11px]">
                   {node.secondaryFields.map((sf) => {
-                    const raw = msg[sf.key];
-                    const formatted =
-                      raw === null || raw === undefined
-                        ? 'null'
-                        : sf.formatter
-                        ? sf.formatter(raw)
-                        : sf.formatSigned && Number(raw) > 0
-                        ? `+${raw} ${sf.unit}`
-                        : `${raw} ${sf.unit}`.trim();
+                    const raw = hasPacket ? msg[sf.key] : undefined;
+                    const formatted = !hasPacket
+                      ? '--'
+                      : raw === null || raw === undefined
+                      ? 'null'
+                      : sf.formatter
+                      ? sf.formatter(raw)
+                      : sf.formatSigned && Number(raw) > 0
+                      ? `+${raw} ${sf.unit}`
+                      : `${raw} ${sf.unit}`.trim();
 
                     return (
                       <div
@@ -141,19 +153,27 @@ export default function NodeStatusGrid({ nodeStatuses, onSelectNode }) {
                 <span className="text-[10px] text-slate-400 font-mono">anomalias:</span>
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full truncate max-w-[140px] ${
-                    node.isOffline || isBad
+                    !hasPacket
+                      ? 'bg-slate-100 text-slate-500'
+                      : node.isOffline || isBad
                       ? 'bg-red-100 text-red-700'
                       : 'bg-emerald-100 text-emerald-700'
                   }`}
                   title={node.anomalias}
                 >
-                  {node.isOffline || isBad ? (
+                  {!hasPacket ? (
+                    <Radio className="w-2.5 h-2.5 shrink-0" />
+                  ) : node.isOffline || isBad ? (
                     <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
                   ) : (
                     <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
                   )}
                   <span className="truncate">
-                    {node.isOffline ? 'HACE_S > 60' : node.anomalias}
+                    {!hasPacket
+                      ? 'ESPERANDO'
+                      : node.isOffline
+                      ? 'HACE_S > 60'
+                      : node.anomalias}
                   </span>
                 </span>
               </div>

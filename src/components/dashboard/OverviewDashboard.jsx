@@ -1,4 +1,5 @@
 import React from 'react';
+import { WifiOff, Settings } from 'lucide-react';
 import RadialGauge from '../charts/RadialGauge';
 import {
   DualTrendChart,
@@ -17,7 +18,11 @@ export default function OverviewDashboard({
   evaluations,
   violations,
   nodeStatuses,
+  gatewayOnline,
+  gatewayBaseUrl,
+  gatewayError,
   onOpenDiagnostic,
+  onOpenGatewaySettings,
 }) {
   const latest = history[history.length - 1] || {};
   const getEval = (key) => evaluations.find((e) => e.variableKey === key) || {};
@@ -27,7 +32,37 @@ export default function OverviewDashboard({
 
   return (
     <div className="space-y-5">
-      {/* Row 1: 7 ESP32 Nodes Status Cards (/api/ultimos formatted) */}
+      {/* Aviso si aún no responde el Gateway en http://192.168.4.1 */}
+      {!gatewayOnline && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-100 text-amber-700 shrink-0">
+              <WifiOff className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-900">
+                Esperando datos reales del Gateway ({gatewayBaseUrl}/api/ultimos)
+              </h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Asegúrate de conectar el Wi-Fi de tu laptop a la red{' '}
+                <strong>GEMELO-L419</strong> (contraseña: <code className="font-mono">gemelo2026</code>).
+                La interfaz consulta <code className="font-mono">{gatewayBaseUrl}/api/ultimos</code> y{' '}
+                <code className="font-mono">/api/datos?desde={lastId}</code> automáticamente cada 2
+                segundos. {gatewayError ? `(${gatewayError})` : ''}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenGatewaySettings}
+            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer shrink-0"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Configurar IP del Gateway
+          </button>
+        </div>
+      )}
+
+      {/* Row 1: 7 ESP32 Nodes Status Cards (/api/ultimos real data) */}
       <NodeStatusGrid
         nodeStatuses={nodeStatuses}
         onSelectNode={(nodeId) => onOpenDiagnostic(nodeId)}
@@ -38,21 +73,22 @@ export default function OverviewDashboard({
         <div className="lg:col-span-3">
           <RadialGauge
             title="Nodo 1 · CO2 (co2_ppm)"
-            subtitle={`Nivel: ${latest.nivel || 'NORMAL'} · Δ30s: ${latest.delta_30s ?? 0} ppm`}
+            subtitle={`Nivel: ${latest.nivel || '--'} · Δ30s: ${latest.delta_30s ?? '--'} ppm`}
             value={co2Eval.value}
+            displayText={co2Eval.displayValue}
             unit={co2Eval.unit || 'ppm'}
             min={350}
             max={2000}
             nominalMin={co2Eval.min ?? 400}
             nominalMax={co2Eval.max ?? 1000}
-            status={co2Eval.status || 'NOMINAL'}
+            status={co2Eval.status || 'SIN DATOS'}
             severity={co2Eval.severity || 'nominal'}
             iconName="Wind"
-            timestamp={latest.timestamp}
+            timestamp={latest.timestamp || 'Sin datos aún'}
             extraBadge={
               latest.calentando === 1
                 ? '🔥 calentando = 1 (Precalentando 3 min)'
-                : `anomalias: ${co2Eval.anomalias || 'NINGUNA'}`
+                : `anomalias: ${co2Eval.anomalias || 'SIN_DATOS'}`
             }
             onClick={() => onOpenDiagnostic('nodo-1-co2')}
           />
@@ -63,16 +99,17 @@ export default function OverviewDashboard({
             title="Nodo 7 · Ambiente (temp_c)"
             subtitle={`Humedad: ${latest.hum_pct ?? '--'}% · Presión: ${latest.pres_hpa ?? '--'} hPa`}
             value={tempEval.value}
+            displayText={tempEval.displayValue}
             unit={tempEval.unit || '°C'}
             min={10}
             max={40}
             nominalMin={tempEval.min ?? 20}
             nominalMax={tempEval.max ?? 26}
-            status={tempEval.status || 'NOMINAL'}
+            status={tempEval.status || 'SIN DATOS'}
             severity={tempEval.severity || 'nominal'}
             iconName="Thermometer"
-            timestamp={latest.timestamp}
-            extraBadge={`anomalias: ${tempEval.anomalias || 'NINGUNA'}`}
+            timestamp={latest.timestamp || 'Sin datos aún'}
+            extraBadge={`anomalias: ${tempEval.anomalias || 'SIN_DATOS'}`}
             onClick={() => onOpenDiagnostic('nodo-7-ambiente')}
           />
         </div>

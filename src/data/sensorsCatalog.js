@@ -1,6 +1,5 @@
 export {
   NODES_CATALOG,
   NODES_CATALOG as SENSORS_CATALOG,
-  SCENARIOS,
   GATEWAY_CONFIG,
 } from './nodesCatalog';

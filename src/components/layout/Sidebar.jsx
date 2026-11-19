@@ -6,6 +6,7 @@ import {
   Radio,
   School,
   Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { GATEWAY_CONFIG } from '../../data/nodesCatalog';
 
@@ -15,7 +16,7 @@ export default function Sidebar({
   violationsCount,
   onlineNodesCount,
   totalNodesCount,
-  connectionMode,
+  gatewayBaseUrl,
   gatewayOnline,
 }) {
   const navItems = [
@@ -26,7 +27,7 @@ export default function Sidebar({
       icon: ShieldAlert,
       badge: violationsCount > 0 ? violationsCount : null,
     },
-    { id: 'gateway', label: 'Gateway & Simulador', icon: Radio },
+    { id: 'gateway', label: 'Conexión Gateway', icon: Radio },
     { id: 'catalog', label: 'Catálogo de 7 Nodos', icon: Cpu },
   ];
 
@@ -55,7 +56,7 @@ export default function Sidebar({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/50'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-white'
@@ -81,33 +82,36 @@ export default function Sidebar({
         <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Fuente de Datos
+              Gateway ESP32
             </span>
-            <Wifi
-              className={`w-3.5 h-3.5 ${
-                gatewayOnline ? 'text-cyan-400' : 'text-amber-400'
-              }`}
-            />
+            {gatewayOnline ? (
+              <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+            )}
           </div>
-          <div className="mt-1 text-xs font-bold text-white truncate">
-            {connectionMode === 'hardware'
-              ? 'Gateway ESP32 (192.168.4.1)'
-              : connectionMode === 'python'
-              ? 'Simulador Python (:8000)'
-              : 'Simulador Integrado JS'}
+          <div className="mt-1 text-xs font-bold font-mono text-white truncate">
+            {gatewayBaseUrl}
           </div>
           <div className="mt-0.5 text-[10px] text-slate-400">
-            Polling: /api/ultimos cada 2s
+            GET /api/ultimos cada 2s
           </div>
         </div>
 
         {/* Estado Global */}
         <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Estado Global del Aula L419
+            Nodos Recibidos en Vivo
           </div>
           <div className="mt-1.5 flex items-center gap-2">
-            {violationsCount === 0 ? (
+            {onlineNodesCount === 0 ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-xs font-bold text-amber-300">
+                  0/{totalNodesCount} Nodos (Esperando)
+                </span>
+              </>
+            ) : violationsCount === 0 ? (
               <>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span className="text-xs font-bold text-emerald-400">
