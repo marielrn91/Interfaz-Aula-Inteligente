@@ -9,6 +9,10 @@ import {
   Droplets,
   Gauge,
   Activity,
+  Users,
+  DoorOpen,
+  Radio,
+  Wifi,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -21,6 +25,10 @@ const ICON_MAP = {
   Droplets,
   Gauge,
   Activity,
+  Users,
+  DoorOpen,
+  Radio,
+  Wifi,
 };
 
 export default function SensorIcon({ name, className = 'w-5 h-5', style }) {

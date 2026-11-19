@@ -6,8 +6,9 @@ import {
   Wrench,
   ArrowLeft,
   Zap,
+  Code2,
 } from 'lucide-react';
-import SensorIcon from './SensorIcon';
+import SensorIcon from '../common/SensorIcon';
 
 export default function DiagnosticView({
   violations,
@@ -16,7 +17,9 @@ export default function DiagnosticView({
   onBackToOverview,
 }) {
   const activeViolation =
-    violations.find((v) => v.id === selectedViolationId || v.sensorId === selectedViolationId) ||
+    violations.find(
+      (v) => v.id === selectedViolationId || v.sensorId === selectedViolationId
+    ) ||
     violations[0] ||
     null;
 
@@ -27,10 +30,12 @@ export default function DiagnosticView({
         <div>
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-indigo-600" />
-            Diagnóstico de Violaciones, Causas, Efectos y Recomendaciones
+            Diagnóstico Causal OR-AND de Anomalías del Gateway (GEMELO-L419)
           </h2>
           <p className="text-xs text-slate-500">
-            Lógica de diagnóstico OR-AND aplicada únicamente cuando se detecta una alerta activa
+            Evalúa códigos de <code className="font-mono">anomalias</code> reportados en{' '}
+            <code className="font-mono">/api/ultimos</code>, fallos de sensor (<code className="font-mono">null</code>)
+            y desconexión (<code className="font-mono">hace_s &gt; 60</code>).
           </p>
         </div>
         <button
@@ -42,7 +47,6 @@ export default function DiagnosticView({
         </button>
       </div>
 
-      {/* When nominal: ONLY show clean nominal status (no causes, effects or recommendations) */}
       {violations.length === 0 ? (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex items-center gap-4">
           <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
@@ -50,12 +54,12 @@ export default function DiagnosticView({
           </div>
           <div>
             <h3 className="text-base font-bold text-emerald-900">
-              Sin Violaciones Activas — Aula en Estado Nominal
+              7/7 Nodos con anomalias: &quot;NINGUNA&quot; — Aula L419 en Estado Nominal
             </h3>
             <p className="text-sm text-emerald-700 mt-1">
-              Todas las mediciones se encuentran dentro de sus parámetros estándar. Las
-              especificaciones de causas raíz, efectos y recomendaciones inmediatas aparecerán
-              automáticamente aquí cuando se produzca alguna alerta.
+              Todos los nodos ESP32 están transmitiendo con <code className="font-mono">hace_s &lt; 60</code> y
+              sus mediciones en <code className="font-mono">msg</code> se encuentran dentro de los parámetros
+              estándar.
             </p>
           </div>
         </div>
@@ -65,7 +69,7 @@ export default function DiagnosticView({
           <div className="space-y-3">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" />
-              Violaciones Detectadas ({violations.length})
+              Anomalías y Violaciones Activas ({violations.length})
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {violations.map((v) => {
@@ -83,7 +87,7 @@ export default function DiagnosticView({
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700">
                         <SensorIcon name={v.icon} className="w-4 h-4" />
-                        {v.sensorShort} · {v.variableLabel}
+                        Nodo {v.nodo} ({v.tipo}) · {v.variableLabel}
                       </span>
                       <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-600 text-white">
                         {v.status}
@@ -91,24 +95,32 @@ export default function DiagnosticView({
                     </div>
                     <div className="text-lg font-extrabold font-mono text-slate-900">
                       {v.value}{' '}
-                      <span className="text-xs font-semibold text-slate-500">{v.unit}</span>
+                      <span className="text-xs font-semibold text-slate-500">
+                        {v.value !== 'null' ? v.unit : ''}
+                      </span>
                     </div>
                     <p className="text-xs text-red-700 mt-1">{v.detail}</p>
-                    <p className="text-[11px] text-slate-500 mt-1">{v.referenceNote}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Detectado: {v.timestamp}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-500">
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded">
+                        anomalias: {v.anomalias}
+                      </span>
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded">
+                        hace_s: {v.hace_s}s
+                      </span>
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded">{v.inoFile}</span>
+                    </div>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Active Violation Specification: Evento Principal, Causas Raíz (OR), Efectos (AND), Recomendación Inmediata */}
           {activeViolation && (
             <div className="space-y-4">
               <div className="bg-slate-900 text-white rounded-xl p-4 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 block">
-                    Evento Principal Activo · {activeViolation.sensorName}
+                    Evento Principal Activo · {activeViolation.sensorName} ({activeViolation.inoFile})
                   </span>
                   <h3 className="text-base font-bold mt-0.5">
                     {activeViolation.diagnostic.mainEvent}
@@ -117,9 +129,15 @@ export default function DiagnosticView({
                     {activeViolation.diagnostic.logicNote}
                   </p>
                 </div>
-                <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white">
-                  Medido: {activeViolation.value} {activeViolation.unit}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700">
+                    anomalias: {activeViolation.anomalias}
+                  </span>
+                  <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white">
+                    {activeViolation.variableKey}: {activeViolation.value}{' '}
+                    {activeViolation.value !== 'null' ? activeViolation.unit : ''}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -182,6 +200,20 @@ export default function DiagnosticView({
                   </ol>
                 </div>
               </div>
+
+              {/* Paquete JSON exacto recibido del nodo en conflicto */}
+              {activeViolation.msg && (
+                <div className="bg-slate-900 text-slate-100 rounded-xl p-4 border border-slate-800">
+                  <div className="flex items-center gap-2 text-xs font-bold text-cyan-300 mb-2">
+                    <Code2 className="w-4 h-4" />
+                    Paquete JSON Crudo (<code className="font-mono">s.msg</code>) recibido del Nodo{' '}
+                    {activeViolation.nodo} ({activeViolation.tipo})
+                  </div>
+                  <pre className="bg-slate-950 text-emerald-300 p-3 rounded-lg text-[11px] font-mono overflow-x-auto border border-slate-800">
+                    {JSON.stringify(activeViolation.msg, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </>
