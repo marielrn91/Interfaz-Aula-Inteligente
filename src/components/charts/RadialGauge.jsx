@@ -1,5 +1,5 @@
 import React from 'react';
-import SensorIcon from './SensorIcon';
+import SensorIcon from '../common/SensorIcon';
 
 function polarToCartesian(cx, cy, r, angleDeg) {
   const rad = ((angleDeg - 90) * Math.PI) / 180.0;
@@ -20,6 +20,7 @@ export default function RadialGauge({
   title,
   subtitle,
   value,
+  displayText,
   unit,
   min,
   max,
@@ -29,9 +30,12 @@ export default function RadialGauge({
   severity,
   iconName,
   timestamp,
+  extraBadge,
   onClick,
 }) {
-  const clamped = Math.min(max, Math.max(min, value));
+  const isEmpty = value === null || value === undefined || value === 'null';
+  const numericValue = isEmpty ? min : Number(value);
+  const clamped = Math.min(max, Math.max(min, numericValue));
   const startAngle = -125;
   const endAngle = 125;
   const totalSpan = endAngle - startAngle;
@@ -50,7 +54,9 @@ export default function RadialGauge({
   const needleTip = polarToCartesian(cx, cy, radius - 10, needleAngle);
 
   const statusColors =
-    severity === 'critical'
+    status === 'SIN DATOS'
+      ? 'bg-slate-100 text-slate-600 border-slate-200'
+      : severity === 'critical'
       ? 'bg-red-100 text-red-700 border-red-200'
       : severity === 'warning'
       ? 'bg-amber-100 text-amber-800 border-amber-200'
@@ -62,7 +68,7 @@ export default function RadialGauge({
       className={`bg-white rounded-xl border p-4 shadow-sm transition-all flex flex-col justify-between ${
         isViolation
           ? 'border-red-300 ring-2 ring-red-100 cursor-pointer hover:shadow-md'
-          : 'border-slate-200 hover:border-slate-300'
+          : 'border-slate-200 hover:border-slate-300 cursor-pointer'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -125,17 +131,19 @@ export default function RadialGauge({
             strokeLinecap="butt"
           />
 
-          {/* Needle */}
-          <line
-            x1={cx}
-            y1={cy}
-            x2={needleTip.x}
-            y2={needleTip.y}
-            stroke={isViolation ? '#dc2626' : '#1e293b'}
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            className="transition-all duration-500"
-          />
+          {/* Needle only rendered when there is an actual numeric value */}
+          {!isEmpty && (
+            <line
+              x1={cx}
+              y1={cy}
+              x2={needleTip.x}
+              y2={needleTip.y}
+              stroke={isViolation ? '#dc2626' : '#1e293b'}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              className="transition-all duration-500"
+            />
+          )}
           <circle cx={cx} cy={cy} r="6" fill={isViolation ? '#dc2626' : '#1e293b'} />
           <circle cx={cx} cy={cy} r="2.5" fill="#ffffff" />
 
@@ -152,23 +160,32 @@ export default function RadialGauge({
           <div className="flex items-baseline justify-center gap-1">
             <span
               className={`text-2xl font-extrabold font-mono tracking-tight ${
-                isViolation ? 'text-red-600' : 'text-slate-800'
+                isViolation
+                  ? 'text-red-600'
+                  : isEmpty
+                  ? 'text-slate-400'
+                  : 'text-slate-800'
               }`}
             >
-              {value}
+              {displayText !== undefined ? displayText : isEmpty ? '--' : value}
             </span>
-            <span className="text-xs font-semibold text-slate-500">{unit}</span>
+            {!isEmpty && <span className="text-xs font-semibold text-slate-500">{unit}</span>}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             Nominal: {nominalMin} – {nominalMax} {unit}
           </p>
+          {extraBadge && (
+            <div className="mt-1 inline-block text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+              {extraBadge}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-        <span>Actualizado: {timestamp}</span>
+        <span>Hora: {timestamp}</span>
         {isViolation && (
-          <span className="text-red-600 font-semibold hover:underline">Ver diagnóstico →</span>
+          <span className="text-red-600 font-semibold hover:underline">Ver recomendaciones →</span>
         )}
       </div>
     </div>

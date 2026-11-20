@@ -1,15 +1,16 @@
 import React from 'react';
-import SensorIcon from './SensorIcon';
+import SensorIcon from '../common/SensorIcon';
 
 function buildPath(points, width, height, padX, padY, minVal, maxVal) {
   if (!points.length) return '';
   const innerW = width - padX * 2;
   const innerH = height - padY * 2;
   return points
-    .map((val, idx) => {
+    .map((rawVal, idx) => {
+      const val = rawVal === null || rawVal === undefined ? minVal : Number(rawVal);
       const x = padX + (idx / Math.max(1, points.length - 1)) * innerW;
       const clamped = Math.min(maxVal, Math.max(minVal, val));
-      const y = padY + innerH - ((clamped - minVal) / Math.max(1, maxVal - minVal)) * innerH;
+      const y = padY + innerH - ((clamped - minVal) / Math.max(0.001, maxVal - minVal)) * innerH;
       return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(' ');
@@ -21,8 +22,8 @@ export function DualTrendChart({ history }) {
   const padX = 40;
   const padY = 18;
 
-  const co2Vals = history.map((d) => d.co2);
-  const tempVals = history.map((d) => d.temperature);
+  const co2Vals = history.map((d) => d.co2_ppm ?? 400);
+  const tempVals = history.map((d) => d.temp_c ?? 22);
 
   const co2Path = buildPath(co2Vals, w, h, padX, padY, 300, 1800);
   const tempPath = buildPath(tempVals, w, h, padX, padY, 15, 35);
@@ -39,23 +40,24 @@ export function DualTrendChart({ history }) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-800">
-              Tendencia CO2 (MH-Z1911A) y Temperatura (BME280)
+              Tendencia Temporal: Calidad de Aire (CO₂) y Temperatura
             </h3>
-            <p className="text-xs text-slate-400">Línea punteada roja: límite nominal CO2 (1,000 ppm)</p>
+            <p className="text-xs text-slate-400">
+              Línea roja punteada: límite máximo recomendado de CO₂ (1,000 ppm)
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4 text-xs font-medium">
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-3 h-0.5 bg-indigo-600 inline-block rounded" /> CO2 (ppm)
+            <span className="w-3 h-0.5 bg-indigo-600 inline-block rounded" /> CO₂ (ppm)
           </span>
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-3 h-0.5 bg-emerald-500 inline-block rounded" /> Temp (°C)
+            <span className="w-3 h-0.5 bg-emerald-500 inline-block rounded" /> Temperatura (°C)
           </span>
         </div>
       </div>
 
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-44 overflow-visible">
-        {/* Horizontal grid */}
         {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
           const y = padY + t * (h - padY * 2);
           const co2Label = Math.round(1800 - t * (1800 - 300));
@@ -80,7 +82,6 @@ export function DualTrendChart({ history }) {
           );
         })}
 
-        {/* CO2 threshold 1000 ppm */}
         <line
           x1={padX}
           y1={thresholdCo2Y}
@@ -91,11 +92,9 @@ export function DualTrendChart({ history }) {
           strokeDasharray="4 4"
         />
 
-        {/* Paths */}
         <path d={co2Path} fill="none" stroke="#4f46e5" strokeWidth="2.4" strokeLinejoin="round" />
         <path d={tempPath} fill="none" stroke="#10b981" strokeWidth="2.4" strokeLinejoin="round" />
 
-        {/* X timestamps */}
         {history.map((item, idx) => {
           if (idx % 3 !== 0 && idx !== history.length - 1) return null;
           const x = padX + (idx / Math.max(1, history.length - 1)) * (w - padX * 2);
@@ -135,17 +134,19 @@ export function MultiSensorBarChart({ history }) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-800">
-              Confort Lumínico, Acústico y Humedad por Intervalo
+              Confort Ambiental: Iluminación, Ruido y Humedad
             </h3>
-            <p className="text-xs text-slate-400">Comparativa normalizada (BH1750 / INMP441 / BME280)</p>
+            <p className="text-xs text-slate-400">
+              Mediciones registradas en los intervalos recientes de clase
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs font-medium">
           <span className="flex items-center gap-1 text-slate-700">
-            <span className="w-2.5 h-2.5 bg-amber-400 rounded-sm inline-block" /> Luz (lx/3)
+            <span className="w-2.5 h-2.5 bg-amber-400 rounded-sm inline-block" /> Luz (lux/5)
           </span>
           <span className="flex items-center gap-1 text-slate-700">
-            <span className="w-2.5 h-2.5 bg-violet-500 rounded-sm inline-block" /> Hum (%)
+            <span className="w-2.5 h-2.5 bg-violet-500 rounded-sm inline-block" /> Humedad (%)
           </span>
           <span className="flex items-center gap-1 text-slate-700">
             <span className="w-2.5 h-2.5 bg-cyan-500 rounded-sm inline-block" /> Ruido (dB)
@@ -175,20 +176,20 @@ export function MultiSensorBarChart({ history }) {
         })}
 
         {slice.map((item, idx) => {
-          const groupW = innerW / slice.length;
+          const groupW = innerW / Math.max(1, slice.length);
           const gx = padX + idx * groupW + groupW * 0.15;
           const barW = (groupW * 0.7) / 3;
 
           const vals = [
-            { v: Math.min(120, item.lux / 3), color: '#fbbf24' },
-            { v: Math.min(120, item.humidity), color: '#8b5cf6' },
-            { v: Math.min(120, item.noise), color: '#06b6d4' },
+            { v: Math.min(120, (item.lux_mesa_est ?? 0) / 5), color: '#fbbf24' },
+            { v: Math.min(120, item.hum_pct ?? 0), color: '#8b5cf6' },
+            { v: Math.min(120, item.leq_db ?? 0), color: '#06b6d4' },
           ];
 
           return (
             <g key={idx}>
               {vals.map((b, bi) => {
-                const bh = (b.v / 120) * innerH;
+                const bh = (Math.max(0, b.v) / 120) * innerH;
                 const by = padY + innerH - bh;
                 return (
                   <rect
@@ -210,7 +211,7 @@ export function MultiSensorBarChart({ history }) {
                   fill="#64748b"
                   textAnchor="middle"
                 >
-                  {item.timestamp.slice(0, 5)}
+                  {(item.timestamp || '').slice(0, 5)}
                 </text>
               )}
             </g>
@@ -224,31 +225,73 @@ export function MultiSensorBarChart({ history }) {
 export function DarkTelemetryRow({ history }) {
   const panels = [
     {
-      title: 'Gases del Aula (NDIR & MQ-2)',
-      subtitle: 'MH-Z1911A (CO2/10) · MQ-2 (GLP ppm)',
+      title: 'Calidad del Aire y Seguridad (Gases)',
+      subtitle: 'Concentración de CO₂ y detección de humo/gases',
       icon: 'Flame',
       series: [
-        { label: 'CO2 / 10', color: '#38bdf8', vals: history.map((d) => d.co2 / 10), min: 0, max: 200 },
-        { label: 'MQ-2 ppm', color: '#f43f5e', vals: history.map((d) => d.gasPpm), min: 0, max: 700 },
+        {
+          label: 'CO₂ / 10',
+          color: '#38bdf8',
+          vals: history.map((d) => (d.co2_ppm ?? 0) / 10),
+          min: 0,
+          max: 200,
+        },
+        {
+          label: 'Gas / Humo',
+          color: '#f43f5e',
+          vals: history.map((d) => (d.rs_r0 ?? 1) * 100),
+          min: 0,
+          max: 150,
+        },
       ],
     },
     {
-      title: 'Clima BME280 (Temp & Hum)',
-      subtitle: 'Cápsula MEMS I2C · Zona Centro',
-      icon: 'Thermometer',
+      title: 'Aforo y Seguridad de Acceso',
+      subtitle: 'Personas estimadas en aula y tiempo de puerta abierta',
+      icon: 'Users',
       series: [
-        { label: 'Temp °C', color: '#fbbf24', vals: history.map((d) => d.temperature), min: 10, max: 40 },
-        { label: 'Hum %', color: '#34d399', vals: history.map((d) => d.humidity), min: 0, max: 100 },
+        {
+          label: 'Aforo (Personas)',
+          color: '#818cf8',
+          vals: history.map((d) => d.ocupacion_est ?? 0),
+          min: 0,
+          max: 50,
+        },
+        {
+          label: 'Puerta Abierta (seg)',
+          color: '#c084fc',
+          vals: history.map((d) => d.seg_abierta ?? 0),
+          min: 0,
+          max: 300,
+        },
       ],
     },
     {
-      title: 'Acústica, Luz & Campo Hall',
-      subtitle: 'INMP441 · GY-302 (lx/3) · SS49E (G×5)',
+      title: 'Confort Acústico, Lumínico y Térmico',
+      subtitle: 'Ruido sonoro, nivel de iluminación y temperatura',
       icon: 'Activity',
       series: [
-        { label: 'Ruido dB', color: '#ec4899', vals: history.map((d) => d.noise), min: 20, max: 110 },
-        { label: 'Hall G×5', color: '#a78bfa', vals: history.map((d) => d.hallMag * 5), min: 0, max: 100 },
-        { label: 'Luz lx/3', color: '#facc15', vals: history.map((d) => d.lux / 3), min: 0, max: 120 },
+        {
+          label: 'Ruido (dB)',
+          color: '#ec4899',
+          vals: history.map((d) => d.leq_db ?? 0),
+          min: 20,
+          max: 100,
+        },
+        {
+          label: 'Luz (lux/10)',
+          color: '#facc15',
+          vals: history.map((d) => (d.lux ?? 0) / 10),
+          min: 0,
+          max: 100,
+        },
+        {
+          label: 'Temp (°C)',
+          color: '#34d399',
+          vals: history.map((d) => d.temp_c ?? 0),
+          min: 10,
+          max: 40,
+        },
       ],
     },
   ];
