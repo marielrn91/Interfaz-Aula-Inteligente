@@ -32,27 +32,27 @@ export function DualTrendChart({ history }) {
     padY + (h - padY * 2) - ((1000 - 300) / (1800 - 300)) * (h - padY * 2);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-cyan-50 text-cyan-600">
+    <div className="bg-white rounded-2xl border-t-4 border-t-indigo-600 border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-xs">
             <SensorIcon name="Wind" className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">
-              Tendencia Temporal: Calidad de Aire (CO₂) y Temperatura
+            <h3 className="text-sm font-bold text-slate-900">
+              Evolución de Calidad de Aire y Clima en Clase
             </h3>
-            <p className="text-xs text-slate-400">
-              Línea roja punteada: límite máximo recomendado de CO₂ (1,000 ppm)
+            <p className="text-xs text-slate-500">
+              Línea roja: límite sugerido de ventilación (1,000 ppm de CO₂)
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs font-medium">
+        <div className="flex items-center gap-4 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-3 h-0.5 bg-indigo-600 inline-block rounded" /> CO₂ (ppm)
+            <span className="w-3 h-1 bg-indigo-600 inline-block rounded-full" /> Aire CO₂ (ppm)
           </span>
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-3 h-0.5 bg-emerald-500 inline-block rounded" /> Temperatura (°C)
+            <span className="w-3 h-1 bg-emerald-500 inline-block rounded-full" /> Temperatura (°C)
           </span>
         </div>
       </div>
@@ -69,13 +69,13 @@ export function DualTrendChart({ history }) {
                 y1={y}
                 x2={w - padX}
                 y2={y}
-                stroke="#e2e8f0"
+                stroke="#f1f5f9"
                 strokeDasharray="3 3"
               />
-              <text x={padX - 6} y={y + 3} fontSize="9" fill="#64748b" textAnchor="end">
+              <text x={padX - 8} y={y + 3} fontSize="9" fill="#94a3b8" textAnchor="end">
                 {co2Label}
               </text>
-              <text x={w - padX + 6} y={y + 3} fontSize="9" fill="#10b981" textAnchor="start">
+              <text x={w - padX + 8} y={y + 3} fontSize="9" fill="#10b981" textAnchor="start">
                 {tempLabel}°
               </text>
             </g>
@@ -87,31 +87,17 @@ export function DualTrendChart({ history }) {
           y1={thresholdCo2Y}
           x2={w - padX}
           y2={thresholdCo2Y}
-          stroke="#ef4444"
-          strokeWidth="1.2"
+          stroke="#f43f5e"
+          strokeWidth="1.5"
           strokeDasharray="4 4"
         />
 
-        <path d={co2Path} fill="none" stroke="#4f46e5" strokeWidth="2.4" strokeLinejoin="round" />
-        <path d={tempPath} fill="none" stroke="#10b981" strokeWidth="2.4" strokeLinejoin="round" />
-
-        {history.map((item, idx) => {
-          if (idx % 3 !== 0 && idx !== history.length - 1) return null;
-          const x = padX + (idx / Math.max(1, history.length - 1)) * (w - padX * 2);
-          return (
-            <text
-              key={idx}
-              x={x}
-              y={h - 2}
-              fontSize="8.5"
-              fill="#64748b"
-              textAnchor="middle"
-            >
-              {item.timestamp}
-            </text>
-          );
-        })}
+        <path d={co2Path} fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={tempPath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" />
       </svg>
+      <div className="text-center text-[11px] text-slate-400 mt-1">
+        Tendencia continua a lo largo de la clase
+      </div>
     </div>
   );
 }
@@ -126,30 +112,30 @@ export function MultiSensorBarChart({ history }) {
   const innerH = h - padY * 2;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+    <div className="bg-white rounded-2xl border-t-4 border-t-amber-500 border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 rounded-xl bg-amber-500 text-white shadow-xs">
             <SensorIcon name="Sun" className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">
-              Confort Ambiental: Iluminación, Ruido y Humedad
+            <h3 className="text-sm font-bold text-slate-900">
+              Balance de Luz, Silencio y Humedad
             </h3>
-            <p className="text-xs text-slate-400">
-              Mediciones registradas en los intervalos recientes de clase
+            <p className="text-xs text-slate-500">
+              Factores que facilitan el trabajo individual y grupal sin distracciones
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs font-medium">
-          <span className="flex items-center gap-1 text-slate-700">
+        <div className="flex items-center gap-3 text-xs font-semibold">
+          <span className="flex items-center gap-1.5 text-slate-700">
             <span className="w-2.5 h-2.5 bg-amber-400 rounded-sm inline-block" /> Luz (lux/5)
           </span>
-          <span className="flex items-center gap-1 text-slate-700">
+          <span className="flex items-center gap-1.5 text-slate-700">
             <span className="w-2.5 h-2.5 bg-violet-500 rounded-sm inline-block" /> Humedad (%)
           </span>
-          <span className="flex items-center gap-1 text-slate-700">
-            <span className="w-2.5 h-2.5 bg-cyan-500 rounded-sm inline-block" /> Ruido (dB)
+          <span className="flex items-center gap-1.5 text-slate-700">
+            <span className="w-2.5 h-2.5 bg-rose-500 rounded-sm inline-block" /> Ruido (dB)
           </span>
         </div>
       </div>
@@ -165,10 +151,10 @@ export function MultiSensorBarChart({ history }) {
                 y1={y}
                 x2={w - padX}
                 y2={y}
-                stroke="#e2e8f0"
+                stroke="#f1f5f9"
                 strokeDasharray="3 3"
               />
-              <text x={padX - 6} y={y + 3} fontSize="9" fill="#64748b" textAnchor="end">
+              <text x={padX - 8} y={y + 3} fontSize="9" fill="#94a3b8" textAnchor="end">
                 {label}
               </text>
             </g>
@@ -181,9 +167,9 @@ export function MultiSensorBarChart({ history }) {
           const barW = (groupW * 0.7) / 3;
 
           const vals = [
-            { v: Math.min(120, (item.lux_mesa_est ?? 0) / 5), color: '#fbbf24' },
+            { v: Math.min(120, (item.lux_mesa_est ?? 0) / 5), color: '#f59e0b' },
             { v: Math.min(120, item.hum_pct ?? 0), color: '#8b5cf6' },
-            { v: Math.min(120, item.leq_db ?? 0), color: '#06b6d4' },
+            { v: Math.min(120, item.leq_db ?? 0), color: '#f43f5e' },
           ];
 
           return (
@@ -203,41 +189,33 @@ export function MultiSensorBarChart({ history }) {
                   />
                 );
               })}
-              {idx % 2 === 0 && (
-                <text
-                  x={gx + groupW * 0.35}
-                  y={h - 2}
-                  fontSize="8"
-                  fill="#64748b"
-                  textAnchor="middle"
-                >
-                  {(item.timestamp || '').slice(0, 5)}
-                </text>
-              )}
             </g>
           );
         })}
       </svg>
+      <div className="text-center text-[11px] text-slate-400 mt-1">
+        Mediciones recientes de bienestar en el salón
+      </div>
     </div>
   );
 }
 
-export function DarkTelemetryRow({ history }) {
+export function LightTelemetryRow({ history }) {
   const panels = [
     {
-      title: 'Calidad del Aire y Seguridad (Gases)',
-      subtitle: 'Concentración de CO₂ y detección de humo/gases',
+      title: 'Calidad del Aire y Seguridad',
+      subtitle: 'Concentración de CO₂ y ausencia de humo/gases',
       icon: 'Flame',
       series: [
         {
-          label: 'CO₂ / 10',
-          color: '#38bdf8',
+          label: 'Aire CO₂ / 10',
+          color: '#0284c7',
           vals: history.map((d) => (d.co2_ppm ?? 0) / 10),
           min: 0,
           max: 200,
         },
         {
-          label: 'Gas / Humo',
+          label: 'Seguridad Gases',
           color: '#f43f5e',
           vals: history.map((d) => (d.rs_r0 ?? 1) * 100),
           min: 0,
@@ -246,20 +224,20 @@ export function DarkTelemetryRow({ history }) {
       ],
     },
     {
-      title: 'Aforo y Seguridad de Acceso',
-      subtitle: 'Personas estimadas en aula y tiempo de puerta abierta',
+      title: 'Aforo y Circulación en el Aula',
+      subtitle: 'Alumnos presentes y estado de la puerta',
       icon: 'Users',
       series: [
         {
-          label: 'Aforo (Personas)',
-          color: '#818cf8',
+          label: 'Alumnos en Aula',
+          color: '#6366f1',
           vals: history.map((d) => d.ocupacion_est ?? 0),
           min: 0,
           max: 50,
         },
         {
-          label: 'Puerta Abierta (seg)',
-          color: '#c084fc',
+          label: 'Puerta Abierta (s)',
+          color: '#a855f7',
           vals: history.map((d) => d.seg_abierta ?? 0),
           min: 0,
           max: 300,
@@ -267,8 +245,8 @@ export function DarkTelemetryRow({ history }) {
       ],
     },
     {
-      title: 'Confort Acústico, Lumínico y Térmico',
-      subtitle: 'Ruido sonoro, nivel de iluminación y temperatura',
+      title: 'Confort Acústico, Luz y Térmico',
+      subtitle: 'Condiciones de estudio para el aprendizaje',
       icon: 'Activity',
       series: [
         {
@@ -280,14 +258,14 @@ export function DarkTelemetryRow({ history }) {
         },
         {
           label: 'Luz (lux/10)',
-          color: '#facc15',
+          color: '#f59e0b',
           vals: history.map((d) => (d.lux ?? 0) / 10),
           min: 0,
           max: 100,
         },
         {
           label: 'Temp (°C)',
-          color: '#34d399',
+          color: '#10b981',
           vals: history.map((d) => d.temp_c ?? 0),
           min: 10,
           max: 40,
@@ -301,61 +279,81 @@ export function DarkTelemetryRow({ history }) {
   const padX = 24;
   const padY = 12;
 
+  const panelThemes = [
+    {
+      cardBg: 'bg-white border-sky-200 hover:border-sky-400',
+      iconBg: 'bg-sky-500 text-white',
+    },
+    {
+      cardBg: 'bg-white border-indigo-200 hover:border-indigo-400',
+      iconBg: 'bg-indigo-600 text-white',
+    },
+    {
+      cardBg: 'bg-white border-emerald-200 hover:border-emerald-400',
+      iconBg: 'bg-emerald-600 text-white',
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {panels.map((panel, idx) => (
-        <div
-          key={idx}
-          className="bg-slate-900 text-slate-100 rounded-xl border border-slate-800 p-4 shadow-md"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h4 className="text-sm font-semibold text-white">{panel.title}</h4>
-              <p className="text-[11px] text-slate-400">{panel.subtitle}</p>
+      {panels.map((panel, idx) => {
+        const theme = panelThemes[idx] || panelThemes[0];
+        return (
+          <div
+            key={idx}
+            className={`rounded-2xl border p-5 shadow-xs transition-all hover:shadow-md ${theme.cardBg}`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">{panel.title}</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">{panel.subtitle}</p>
+              </div>
+              <div className={`p-2 rounded-xl shadow-2xs ${theme.iconBg}`}>
+                <SensorIcon name={panel.icon} className="w-4 h-4" />
+              </div>
             </div>
-            <SensorIcon name={panel.icon} className="w-4 h-4 text-cyan-400" />
-          </div>
 
-          <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-28">
-            {[0, 0.5, 1].map((t, gi) => {
-              const y = padY + t * (h - padY * 2);
-              return (
-                <line
-                  key={gi}
-                  x1={padX}
-                  y1={y}
-                  x2={w - 10}
-                  y2={y}
-                  stroke="#1e293b"
-                  strokeDasharray="3 3"
+            <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-28">
+              {[0, 0.5, 1].map((t, gi) => {
+                const y = padY + t * (h - padY * 2);
+                return (
+                  <line
+                    key={gi}
+                    x1={padX}
+                    y1={y}
+                    x2={w - 10}
+                    y2={y}
+                    stroke="#e2e8f0"
+                    strokeDasharray="3 3"
+                  />
+                );
+              })}
+              {panel.series.map((s, si) => (
+                <path
+                  key={si}
+                  d={buildPath(s.vals, w, h, padX, padY, s.min, s.max)}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth="2.4"
+                  strokeLinejoin="round"
                 />
-              );
-            })}
-            {panel.series.map((s, si) => (
-              <path
-                key={si}
-                d={buildPath(s.vals, w, h, padX, padY, s.min, s.max)}
-                fill="none"
-                stroke={s.color}
-                strokeWidth="2.2"
-                strokeLinejoin="round"
-              />
-            ))}
-          </svg>
+              ))}
+            </svg>
 
-          <div className="flex flex-wrap items-center gap-3 mt-1 pt-2 border-t border-slate-800 text-[11px]">
-            {panel.series.map((s, si) => (
-              <span key={si} className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2.5 h-0.5 rounded" style={{ backgroundColor: s.color }} />
-                {s.label}:{' '}
-                <strong className="font-mono text-white">
-                  {s.vals[s.vals.length - 1]?.toFixed(1)}
-                </strong>
-              </span>
-            ))}
+            <div className="flex flex-wrap items-center gap-3 mt-1 pt-2.5 border-t border-slate-200/60 text-[11px]">
+              {panel.series.map((s, si) => (
+                <span key={si} className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2.5 h-1 rounded-full" style={{ backgroundColor: s.color }} />
+                  {s.label}:{' '}
+                  <strong className="font-mono text-slate-900">
+                    {s.vals[s.vals.length - 1]?.toFixed(1)}
+                  </strong>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
